@@ -1,0 +1,507 @@
+---
+title: "Video Empathy Analysis"
+author: "Ellen Herschel, Colin McDaniel, Sherry Zhang"
+date: "11/29/2021"
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+  pdf_document:
+    toc: yes
+---
+
+## Load packages
+
+```{r load-pkg, include=FALSE}
+# Add additional packages you need
+# install.packages("psych")
+library(here)  # makes reading data more consistent
+library(foreign)
+library(tidyverse)  # for data manipulation and plotting
+library(haven)  # for importing SPSS/SAS/Stata data
+library(lme4)  # for multilevel analysis
+library(glmmTMB)  # for longitudinal analysis
+library(sjPlot)  # for plotting
+library(modelsummary)  # for making tables
+library(interactions)  # for interaction plots
+library(nlme)
+library(mice) # For missing data analysis
+library(R.utils)
+library(psych) # For plotting raw data
+theme_set(theme_bw())  # Theme; just my personal preference
+```
+
+# Read in Data
+
+```{r data-import}
+# Import R data
+alldata <- read.csv("~/Desktop/Coursework/Fall 2021/Multilevel Modeling/psyc575/Music_Sports_Empathy/Music_Sports_Empathy/Full Data Sets/sport_music_dat_mlm_long2.csv")
+
+# alldata <- read.csv("sport_music_dat_mlm_long2.csv")
+
+widedata<- read.csv("~/Desktop/Coursework/Fall 2021/Multilevel Modeling/psyc575/Music_Sports_Empathy/Music_Sports_Empathy/Full Data Sets/sport_music_dat_mlm_wide.csv")
+
+# widedata<- read.csv("sport_music_dat_mlm_wide.csv")
+```
+
+#Factor, Get rid of NAs
+```{r}
+alldata$year <- factor(alldata$year)
+alldata$group <- factor(alldata$group)
+
+alldata$time<-as.integer(alldata$year)
+
+
+alldata1<- drop_na(alldata, wasi_vci, group, empathy_conceptual, wasi_age)
+
+```
+
+# Mean-center Age
+```{r}
+alldata1 <- alldata1 %>% 
+  group_by(id) %>%   # operate within individual
+  mutate(age_pm = mean(wasi_age),   # create individual means (the same as `meanses`)
+         age_pmc = wasi_age - age_pm) %>%   # cluster-mean centered
+  ungroup()  # exit the "editing within groups" mode
+
+alldata1 %>% 
+  select(id, wasi_age, age_pm, age_pmc)
+
+#verbal ability
+alldata1 <- alldata1 %>% 
+  group_by(id) %>%   # operate within individual
+  mutate(verbal_pm = mean(wasi_vci),   # create individual means (the same as `meanses`)
+         verbal_pmc = wasi_vci - verbal_pm) %>%   # cluster-mean centered
+  ungroup()  # exit the "editing within groups" mode
+
+alldata1 %>% 
+  select(id, wasi_vci, verbal_pm, verbal_pmc)
+
+
+datasummary_skim(alldata1 %>%
+                   select(empathy_conceptual, time, wasi_age, group, wasi_vci ))
+```
+
+
+# Check for differences in baseline Age
+
+```{r}
+
+widedata$group <- factor(widedata$group)
+
+agebase<-aov(wasi_age_Y1~group, widedata)
+summary(agebase)
+
+```
+
+# Attrition Analysis
+```{r}
+# Replace incorrectly placed 0s with NA
+alldata$empathy_conceptual[alldata$empathy_conceptual == 0] <- NA
+
+# Examine missing data patterns
+md.pattern(alldata[,c("empathy_conceptual", "baseage", "wasi_vci")])
+
+# Attrition analysis setup
+alldata$miss_empathy_conceptual <- ifelse(is.na(alldata$empathy_conceptual), 1, 0)
+alldata$miss_baseage <- ifelse(is.na(alldata$baseage), 1, 0)
+alldata$miss_wasi_vci <- ifelse(is.na(alldata$wasi_vci), 1, 0)
+
+# Test whether bryant_percent is missing completely at random
+t.test(alldata$baseage[alldata$miss_empathy_conceptual==0], alldata$baseage[alldata$miss_empathy_conceptual==1], alternative = "two.sided", conf.level = .95, var.equal = TRUE)
+t.test(alldata$wasi_vci[alldata$miss_empathy_conceptual==0], alldata$wasi_vci[alldata$miss_empathy_conceptual==1], alternative = "two.sided", conf.level = .95, var.equal = TRUE)
+
+# Test whether wasi_vci is missing completely at random
+# t.test(alldata$bryant_percent[alldata$miss_wasi_vci==0], alldata$bryant_percent[alldata$miss_wasi_vci==1], alternative = "two.sided", conf.level = .95, var.equal = TRUE) # Commented out because bryant_percent is NA at every point where wasi_vci is NA
+t.test(alldata$baseage[alldata$miss_wasi_vci==0], alldata$baseage[alldata$miss_wasi_vci==1], alternative = "two.sided", conf.level = .95, var.equal = TRUE)
+```
+
+# Check assumptions
+
+```{r assumptions}
+alldata1 %>%
+  # Select the variables to be used
+  select(group, wasi_gender, empathy_conceptual, baseage, wasi_age, wasi_vci) %>%
+  psych::pairs.panels(ellipses = FALSE, cex = 0.2, cex.cor = 1)
+
+
+```
+The data for baseage, and wasi_vci (the continuous variables being included in the model) appear relatively normal.
+Data for empathy conceptial is skewed.
+
+# Write Down Model Equations 
+
+Lv-1:
+$$\mathrm{empathyconceptual}_{ti} = \beta_{0i} + \beta_{1i}\mathrm{time}_{ti} + \beta_{2i}\mathrm{verbalpmc}_{ti} + e_{ti}$$
+Lv-2:
+$$\beta_{0i} = \gamma_{00} + \gamma_{01}\mathrm{baseage}_i + \gamma_{02}\mathrm{verbalpm_i} + \gamma_{03}\mathrm{group}_i+ u_{0i}$$
+$$\beta_{1i} = \gamma_{10} + \gamma_{11}\mathrm{verbalpm}_i + \gamma_{12}\mathrm{group}_i +  u_{1i}$$
+$$\beta_{2i} = \gamma_{20} + \gamma_{21}\mathrm{baseage}_i + \gamma_{22}\mathrm{group}_i + u_{2i}$$
+
+# Baseline Model
+
+```{r}
+#model with just base interaction of year and group, and no random slopes
+m0 <- glmmTMB(empathy_conceptual ~ time + (1 | id),
+    data = alldata1,
+)
+
+summary(m0)
+
+```
+
+
+# Add in and test covariates and random slopes
+
+```{r}
+#model 
+
+m1 <- glmmTMB(empathy_conceptual ~ time + group + (1 | id),
+    data = alldata1,
+)
+
+summary(m1)
+
+anova(m0, m1)
+#no sig
+
+#add interaction of year and group
+m2 <- glmmTMB(empathy_conceptual ~ time*group + (1 | id),
+    data = alldata1,
+)
+summary(m2)
+
+anova(m1, m2) 
+#yes sig 0.08/2
+
+#add more covariates
+#verbal (person mean-centered)
+m3 <- glmmTMB(empathy_conceptual ~ time*group + verbal_pmc + (1 | id),
+    data = alldata1,
+)
+summary(m3)
+
+anova(m2, m3)
+#is not sig
+
+#verbal (person mean)
+m4 <- glmmTMB(empathy_conceptual ~ time*group + verbal_pm + (1 | id),
+    data = alldata1,
+)
+summary(m4)
+
+anova(m2, m4)
+#is not sig
+
+# age
+m5 <- glmmTMB(empathy_conceptual ~ time*group + baseage + (1 | id),
+    data = alldata1,
+)
+summary(m5)
+
+anova(m2, m5)
+# is not sig
+
+#gender
+m6 <- glmmTMB(empathy_conceptual ~ time*group + wasi_gender + (1 | id),
+    data = alldata1,
+)
+summary(m6)
+
+anova(m2, m6)
+#not sig, gender doesnt seem to improve the model
+
+
+#test for random slopes
+
+#time
+m2.1 <- glmmTMB(empathy_conceptual ~ time*group +  (time | id),
+    data = alldata1,
+)
+summary(m2.1)
+
+anova(m2, m2.1)
+#this is not sig
+
+confint(m2, parm = "beta_")
+```
+
+
+# Here's our final model
+
+```{r}
+summary(m2)
+```
+
+
+# Coefficient Table (msummary)
+
+```{r}
+msummary(m2,
+  stars=TRUE)
+
+```
+
+
+# Plot
+```{r}
+plot_model(m2,
+    type = "pred", show.data = TRUE,
+    title = "", dot.size = 0.5,
+    jitter = 0.1
+)
+
+plot_model(m2,
+    type = "pred", terms = "time",
+    show.data = TRUE, jitter = 0.1,
+    title = "Figure 1: Effect of time on empathy ",
+    dot.size = 0.5
+)
+
+# Interaction plot (year:group)
+interact_plot(m2,
+              pred = "time",
+              modx = "group",
+              plot.points = TRUE,
+              point.size = 0.5,
+              point.alpha = 0.2,
+              jitter = 0.02,
+              x.label = "Year",
+              y.label = "Video Empathy: Conceptual")
+```
+
+
+Summary:
+
+# Let's do it all again, but this time with empathy_exact instead
+
+
+#Factor, Get rid of NAs
+```{r}
+alldata$year <- factor(alldata$year)
+alldata$group <- factor(alldata$group)
+
+alldata$time<-as.integer(alldata$year)
+
+
+alldata1<- drop_na(alldata, wasi_vci, group, empathy_exact, wasi_age)
+
+```
+
+# Mean-center Age
+```{r}
+alldata1 <- alldata1 %>% 
+  group_by(id) %>%   # operate within individual
+  mutate(age_pm = mean(wasi_age),   # create individual means (the same as `meanses`)
+         age_pmc = wasi_age - age_pm) %>%   # cluster-mean centered
+  ungroup()  # exit the "editing within groups" mode
+
+alldata1 %>% 
+  select(id, wasi_age, age_pm, age_pmc)
+
+#verbal ability
+alldata1 <- alldata1 %>% 
+  group_by(id) %>%   # operate within individual
+  mutate(verbal_pm = mean(wasi_vci),   # create individual means (the same as `meanses`)
+         verbal_pmc = wasi_vci - verbal_pm) %>%   # cluster-mean centered
+  ungroup()  # exit the "editing within groups" mode
+
+alldata1 %>% 
+  select(id, wasi_vci, verbal_pm, verbal_pmc)
+
+
+datasummary_skim(alldata1 %>%
+                   select(empathy_exact, time, wasi_age, group, wasi_vci ))
+```
+
+
+# Check for differences in baseline Age
+
+```{r}
+
+widedata$group <- factor(widedata$group)
+
+agebase<-aov(wasi_age_Y1~group, widedata)
+summary(agebase)
+
+```
+
+# Attrition Analysis
+```{r}
+# Replace incorrectly placed 0s with NA
+alldata$empathy_exact[alldata$empathy_exact == 0] <- NA
+
+# Examine missing data patterns
+md.pattern(alldata[,c("empathy_exact", "baseage", "wasi_vci")])
+
+# Attrition analysis setup
+alldata$miss_empathy_exact <- ifelse(is.na(alldata$empathy_exact), 1, 0)
+alldata$miss_baseage <- ifelse(is.na(alldata$baseage), 1, 0)
+alldata$miss_wasi_vci <- ifelse(is.na(alldata$wasi_vci), 1, 0)
+
+# Test whether bryant_percent is missing completely at random
+t.test(alldata$baseage[alldata$miss_empathy_exact==0], alldata$baseage[alldata$miss_empathy_exact==1], alternative = "two.sided", conf.level = .95, var.equal = TRUE)
+t.test(alldata$wasi_vci[alldata$miss_empathy_exact==0], alldata$wasi_vci[alldata$miss_empathy_exact==1], alternative = "two.sided", conf.level = .95, var.equal = TRUE)
+
+# Test whether wasi_vci is missing completely at random
+# t.test(alldata$bryant_percent[alldata$miss_wasi_vci==0], alldata$bryant_percent[alldata$miss_wasi_vci==1], alternative = "two.sided", conf.level = .95, var.equal = TRUE) # Commented out because bryant_percent is NA at every point where wasi_vci is NA
+t.test(alldata$baseage[alldata$miss_wasi_vci==0], alldata$baseage[alldata$miss_wasi_vci==1], alternative = "two.sided", conf.level = .95, var.equal = TRUE)
+```
+
+# Check assumptions
+
+```{r assumptions}
+alldata1 %>%
+  # Select the variables to be used
+  select(group, wasi_gender, empathy_exact, baseage, wasi_age, wasi_vci) %>%
+  psych::pairs.panels(ellipses = FALSE, cex = 0.2, cex.cor = 1)
+
+
+```
+The data for baseage, and wasi_vci (the continuous variables being included in the model) appear relatively normal.
+Data for empathy exact is skewed.
+
+# Write Down Model Equations 
+
+Lv-1:
+$$\mathrm{empathyexact}_{ti} = \beta_{0i} + \beta_{1i}\mathrm{time}_{ti} + \beta_{2i}\mathrm{verbalpmc}_{ti} + e_{ti}$$
+Lv-2:
+$$\beta_{0i} = \gamma_{00} + \gamma_{01}\mathrm{baseage}_i + \gamma_{02}\mathrm{verbalpm_i} + \gamma_{03}\mathrm{group}_i+ u_{0i}$$
+$$\beta_{1i} = \gamma_{10} + \gamma_{11}\mathrm{verbalpm}_i + \gamma_{12}\mathrm{group}_i +  u_{1i}$$
+$$\beta_{2i} = \gamma_{20} + \gamma_{21}\mathrm{baseage}_i + \gamma_{22}\mathrm{group}_i + u_{2i}$$
+
+# Baseline Model
+
+```{r}
+#model with just base interaction of year and group, and no random slopes
+m0 <- glmmTMB(empathy_exact ~ time + (1 | id),
+    data = alldata1,
+)
+
+summary(m0)
+
+```
+
+
+# Add in and test covariates and random slopes
+
+```{r}
+#model 
+
+m1 <- glmmTMB(empathy_exact ~ time + group + (1 | id),
+    data = alldata1,
+)
+
+summary(m1)
+
+anova(m0, m1)
+#no sig
+
+#add interaction of year and group
+m2 <- glmmTMB(empathy_exact ~ time*group + (1 | id),
+    data = alldata1,
+)
+summary(m2)
+
+anova(m1, m2) 
+#no sig, but this is what we want to test
+
+#add more covariates
+#verbal (person mean-centered)
+m3 <- glmmTMB(empathy_exact ~ time*group + verbal_pmc + (1 | id),
+    data = alldata1,
+)
+summary(m3)
+
+anova(m2, m3)
+#is not sig
+
+#verbal (person mean)
+m4 <- glmmTMB(empathy_exact ~ time*group + verbal_pm + (1 | id),
+    data = alldata1,
+)
+summary(m4)
+
+anova(m2, m4)
+#is not sig
+
+# age
+m5 <- glmmTMB(empathy_exact ~ time*group + baseage + (1 | id),
+    data = alldata1,
+)
+summary(m5)
+
+anova(m2, m5)
+# is not sig
+
+#gender
+m6 <- glmmTMB(empathy_exact ~ time*group + wasi_gender + (1 | id),
+    data = alldata1,
+)
+summary(m6)
+
+anova(m2, m6)
+#not sig, gender doesnt seem to improve the model
+
+
+#test for random slopes
+
+#time
+m2.1 <- glmmTMB(empathy_exact ~ time*group +  (time | id),
+    data = alldata1,
+)
+summary(m2.1)
+#model convergence issue
+
+anova(m2, m2.1)
+#this is not sig
+
+confint(m2, parm = "beta_")
+```
+
+
+# Here's our final model
+
+```{r}
+summary(m2)
+```
+
+
+# Coefficient Table (msummary)
+
+```{r}
+msummary(m2,
+  stars=TRUE)
+
+```
+
+
+# Plot
+```{r}
+plot_model(m2,
+    type = "pred", show.data = TRUE,
+    title = "", dot.size = 0.5,
+    jitter = 0.1
+)
+
+plot_model(m2,
+    type = "pred", terms = "time",
+    show.data = TRUE, jitter = 0.1,
+    title = "Figure 1: Effect of time on empathy ",
+    dot.size = 0.5
+)
+
+# Interaction plot (year:group)
+interact_plot(m2,
+              pred = "time",
+              modx = "group",
+              plot.points = TRUE,
+              point.size = 0.5,
+              point.alpha = 0.2,
+              jitter = 0.02,
+              x.label = "Year",
+              y.label = "Video Empathy: Exact")
+```
+
+
+Summary:
