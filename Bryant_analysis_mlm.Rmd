@@ -37,27 +37,28 @@ theme_set(theme_bw())  # Theme; just my personal preference
 # Import R data
 alldata <- read.csv("~/Desktop/Coursework/Fall 2021/Multilevel Modeling/psyc575/Music_Sports_Empathy/Music_Sports_Empathy/Full Data Sets/sport_music_dat_mlm_long2.csv")
 
-# alldata <- read.csv("sport_music_dat_mlm_long2.csv")
+alldata <- read.csv("sport_music_dat_mlm_long2.csv")
 
 widedata<- read.csv("~/Desktop/Coursework/Fall 2021/Multilevel Modeling/psyc575/Music_Sports_Empathy/Music_Sports_Empathy/Full Data Sets/sport_music_dat_mlm_wide.csv")
 
-# widedata<- read.csv("sport_music_dat_mlm_wide.csv")
+widedata<- read.csv("sport_music_dat_mlm_wide.csv")
 ```
 
 #Factor, Get rid of NAs
 ```{r}
+# Code Year and Group as factors
 alldata$year <- factor(alldata$year)
 alldata$group <- factor(alldata$group)
 
 alldata$time<-as.integer(alldata$year)
 
-
+# Remove NAs from data
 alldata1<- drop_na(alldata, wasi_vci, group, bryant_percent, wasi_age)
-
 ```
 
-# Mean-center Age
+# Mean-center variables
 ```{r}
+# Mean-center Age
 alldata1 <- alldata1 %>% 
   group_by(id) %>%   # operate within individual
   mutate(age_pm = mean(wasi_age),   # create individual means (the same as `meanses`)
@@ -67,7 +68,7 @@ alldata1 <- alldata1 %>%
 alldata1 %>% 
   select(id, wasi_age, age_pm, age_pmc)
 
-#verbal ability
+# Mean-center verbal ability
 alldata1 <- alldata1 %>% 
   group_by(id) %>%   # operate within individual
   mutate(verbal_pm = mean(wasi_vci),   # create individual means (the same as `meanses`)
@@ -86,7 +87,7 @@ datasummary_skim(alldata1 %>%
 # Check for differences in baseline Age
 
 ```{r}
-
+# Code Group as factor
 widedata$group <- factor(widedata$group)
 
 agebase<-aov(wasi_age_Y1~group, widedata)
@@ -126,7 +127,7 @@ alldata1 %>%
 
 
 ```
-The data for pryant_percent, baseage, and wasi_vci (the continuous variables being included in the model) appear relatively normal.
+The data for bryant_percent, baseage, and wasi_vci (the continuous variables being included in the model) appear relatively normal.
 
 # Write Down Model Equations 
 
@@ -197,7 +198,7 @@ m5 <- glmmTMB(bryant_percent ~ time*group + verbal_pm + baseage + (1 | id),
 summary(m5)
 
 anova(m4, m5)
-# not sing, dont include baseline age
+# not sig, dont include baseline age
 
 #gender
 m6 <- glmmTMB(bryant_percent ~ time*group + verbal_pm + wasi_gender + (1 | id),
@@ -212,7 +213,7 @@ anova(m4, m6)
 #test for random slopes
 
 #time
-m4.1 <- glmmTMB(bryant_percent ~ time*group + verbal_pm +  (time | id),
+m4.1 <- glmmTMB(bryant_percent ~ time*group + verbal_pm + (time | id),
     data = alldata1,
 )
 summary(m4.1)
@@ -232,7 +233,7 @@ m4.2 <- glmmTMB(bryant_percent ~ time*group + verbal_pm + (time*verbal_pmc | id)
 summary(m4.2)
 
 anova(m4.1, m4.2)
-#not sig
+# m4.2 did not converge
 
 confint(m4.1, parm = "beta_")
 ```

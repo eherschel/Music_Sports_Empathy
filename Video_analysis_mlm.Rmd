@@ -37,27 +37,28 @@ theme_set(theme_bw())  # Theme; just my personal preference
 # Import R data
 alldata <- read.csv("~/Desktop/Coursework/Fall 2021/Multilevel Modeling/psyc575/Music_Sports_Empathy/Music_Sports_Empathy/Full Data Sets/sport_music_dat_mlm_long2.csv")
 
-# alldata <- read.csv("sport_music_dat_mlm_long2.csv")
+alldata <- read.csv("sport_music_dat_mlm_long2.csv")
 
 widedata<- read.csv("~/Desktop/Coursework/Fall 2021/Multilevel Modeling/psyc575/Music_Sports_Empathy/Music_Sports_Empathy/Full Data Sets/sport_music_dat_mlm_wide.csv")
 
-# widedata<- read.csv("sport_music_dat_mlm_wide.csv")
+widedata<- read.csv("sport_music_dat_mlm_wide.csv")
 ```
 
 #Factor, Get rid of NAs
 ```{r}
+# Code Year and Group as factors
 alldata$year <- factor(alldata$year)
 alldata$group <- factor(alldata$group)
 
 alldata$time<-as.integer(alldata$year)
 
-
+# Remove NAs from data
 alldata1<- drop_na(alldata, wasi_vci, group, empathy_conceptual, wasi_age)
-
 ```
 
-# Mean-center Age
+# Mean-center variables
 ```{r}
+# Mean-center Age
 alldata1 <- alldata1 %>% 
   group_by(id) %>%   # operate within individual
   mutate(age_pm = mean(wasi_age),   # create individual means (the same as `meanses`)
@@ -67,7 +68,7 @@ alldata1 <- alldata1 %>%
 alldata1 %>% 
   select(id, wasi_age, age_pm, age_pmc)
 
-#verbal ability
+# Mean-center verbal ability
 alldata1 <- alldata1 %>% 
   group_by(id) %>%   # operate within individual
   mutate(verbal_pm = mean(wasi_vci),   # create individual means (the same as `meanses`)
@@ -107,12 +108,12 @@ alldata$miss_empathy_conceptual <- ifelse(is.na(alldata$empathy_conceptual), 1, 
 alldata$miss_baseage <- ifelse(is.na(alldata$baseage), 1, 0)
 alldata$miss_wasi_vci <- ifelse(is.na(alldata$wasi_vci), 1, 0)
 
-# Test whether bryant_percent is missing completely at random
+# Test whether empathy_conceptual is missing completely at random
 t.test(alldata$baseage[alldata$miss_empathy_conceptual==0], alldata$baseage[alldata$miss_empathy_conceptual==1], alternative = "two.sided", conf.level = .95, var.equal = TRUE)
 t.test(alldata$wasi_vci[alldata$miss_empathy_conceptual==0], alldata$wasi_vci[alldata$miss_empathy_conceptual==1], alternative = "two.sided", conf.level = .95, var.equal = TRUE)
 
 # Test whether wasi_vci is missing completely at random
-# t.test(alldata$bryant_percent[alldata$miss_wasi_vci==0], alldata$bryant_percent[alldata$miss_wasi_vci==1], alternative = "two.sided", conf.level = .95, var.equal = TRUE) # Commented out because bryant_percent is NA at every point where wasi_vci is NA
+t.test(alldata$empathy_conceptual[alldata$miss_wasi_vci==0], alldata$empathy_conceptual[alldata$miss_wasi_vci==1], alternative = "two.sided", conf.level = .95, var.equal = TRUE)
 t.test(alldata$baseage[alldata$miss_wasi_vci==0], alldata$baseage[alldata$miss_wasi_vci==1], alternative = "two.sided", conf.level = .95, var.equal = TRUE)
 ```
 
@@ -123,8 +124,6 @@ alldata1 %>%
   # Select the variables to be used
   select(group, wasi_gender, empathy_conceptual, baseage, wasi_age, wasi_vci) %>%
   psych::pairs.panels(ellipses = FALSE, cex = 0.2, cex.cor = 1)
-
-
 ```
 The data for baseage, and wasi_vci (the continuous variables being included in the model) appear relatively normal.
 Data for empathy conceptial is skewed.
@@ -339,12 +338,12 @@ alldata$miss_empathy_exact <- ifelse(is.na(alldata$empathy_exact), 1, 0)
 alldata$miss_baseage <- ifelse(is.na(alldata$baseage), 1, 0)
 alldata$miss_wasi_vci <- ifelse(is.na(alldata$wasi_vci), 1, 0)
 
-# Test whether bryant_percent is missing completely at random
+# Test whether empathy_exact is missing completely at random
 t.test(alldata$baseage[alldata$miss_empathy_exact==0], alldata$baseage[alldata$miss_empathy_exact==1], alternative = "two.sided", conf.level = .95, var.equal = TRUE)
 t.test(alldata$wasi_vci[alldata$miss_empathy_exact==0], alldata$wasi_vci[alldata$miss_empathy_exact==1], alternative = "two.sided", conf.level = .95, var.equal = TRUE)
 
 # Test whether wasi_vci is missing completely at random
-# t.test(alldata$bryant_percent[alldata$miss_wasi_vci==0], alldata$bryant_percent[alldata$miss_wasi_vci==1], alternative = "two.sided", conf.level = .95, var.equal = TRUE) # Commented out because bryant_percent is NA at every point where wasi_vci is NA
+t.test(alldata$empathy_exact[alldata$miss_wasi_vci==0], alldata$empathy_exact[alldata$miss_wasi_vci==1], alternative = "two.sided", conf.level = .95, var.equal = TRUE)
 t.test(alldata$baseage[alldata$miss_wasi_vci==0], alldata$baseage[alldata$miss_wasi_vci==1], alternative = "two.sided", conf.level = .95, var.equal = TRUE)
 ```
 
