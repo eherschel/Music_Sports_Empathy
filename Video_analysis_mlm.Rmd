@@ -37,11 +37,11 @@ theme_set(theme_bw())  # Theme; just my personal preference
 # Import R data
 alldata <- read.csv("~/Desktop/Coursework/Fall 2021/Multilevel Modeling/psyc575/Music_Sports_Empathy/Music_Sports_Empathy/Full Data Sets/sport_music_dat_mlm_long2.csv")
 
-alldata <- read.csv("sport_music_dat_mlm_long2.csv")
+#alldata <- read.csv("sport_music_dat_mlm_long2.csv")
 
 widedata<- read.csv("~/Desktop/Coursework/Fall 2021/Multilevel Modeling/psyc575/Music_Sports_Empathy/Music_Sports_Empathy/Full Data Sets/sport_music_dat_mlm_wide.csv")
 
-widedata<- read.csv("sport_music_dat_mlm_wide.csv")
+#widedata<- read.csv("sport_music_dat_mlm_wide.csv")
 ```
 
 #Factor, Get rid of NAs
@@ -349,7 +349,7 @@ t.test(alldata$baseage[alldata$miss_wasi_vci==0], alldata$baseage[alldata$miss_w
 
 # Check assumptions
 
-```{r assumptions}
+```{r assumptions2}
 alldata1 %>%
   # Select the variables to be used
   select(group, wasi_gender, empathy_exact, baseage, wasi_age, wasi_vci) %>%
