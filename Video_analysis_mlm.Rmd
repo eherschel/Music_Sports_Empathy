@@ -504,3 +504,4 @@ interact_plot(m2,
 
 
 Summary:
+The results show a predicted significant increase in the VET of 0.039 per year, regardless of group, when holding constant the interaction between time and group (95% CI [0.007, 0.072]). There was no significant effect of group (Music estimate = 0.068, 95% CI [-0.095, 0.231]; Sport estimate = 0.043, 95% CI [-0.118, 0.203]), and no significant interaction between group and time (Time × Music estimate = 0.014, 95% CI [-0.033, 0.061]; Time × Sport estimate = 0.002, 95% CI [-0.044, 0.049]) on the VET, when holding constant the other variables.
