@@ -245,7 +245,13 @@ confint(m4.1, parm = "beta_")
 summary(m4.1)
 ```
 
+# Write Down Final Model Equations 
 
+Lv-1:
+$$\mathrm{empathybryant}_{ti} = \beta_{0i} + \beta_{1i}\mathrm{time}_{ti} + e_{ti}$$
+Lv-2:
+$$\beta_{0i} = \gamma_{00} + \gamma_{01}\mathrm{group}_i + \gamma_{02}\mathrm{verbalpm_i} + u_{0i}$$
+$$\beta_{1i} = \gamma_{10} + \gamma_{11}\mathrm{group}_i  + u_{1i}$$
 # Coefficient Table (msummary)
 
 ```{r}

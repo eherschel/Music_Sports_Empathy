@@ -232,7 +232,6 @@ confint(m2, parm = "beta_")
 summary(m2)
 ```
 
-
 # Coefficient Table (msummary)
 
 ```{r}
@@ -465,6 +464,15 @@ confint(m2, parm = "beta_")
 summary(m2)
 ```
 
+m2 <- glmmTMB(empathy_exact ~ time*group + (1 | id)
+
+# Write Down Final Model Equations 
+
+Lv-1:
+$$\mathrm{empathyexact}_{ti} = \beta_{0i} + \beta_{1i}\mathrm{time}_{ti} + e_{ti}$$
+Lv-2:
+$$\beta_{0i} = \gamma_{00} + \gamma_{01}\mathrm{group}_i + u_{0i}$$
+$$\beta_{1i} = \gamma_{10} + \gamma_{11}\mathrm{group}_i $$
 
 # Coefficient Table (msummary)
 
@@ -502,6 +510,6 @@ interact_plot(m2,
               y.label = "Video Empathy: Exact")
 ```
 
-
+#We are going to use Empathy Exact: a more interesting and accurate measure
 Summary:
 The results show a predicted significant increase in the VET of 0.039 per year, regardless of group, when holding constant the interaction between time and group (95% CI [0.007, 0.072]). There was no significant effect of group (Music estimate = 0.068, 95% CI [-0.095, 0.231]; Sport estimate = 0.043, 95% CI [-0.118, 0.203]), and no significant interaction between group and time (Time × Music estimate = 0.014, 95% CI [-0.033, 0.061]; Time × Sport estimate = 0.002, 95% CI [-0.044, 0.049]) on the VET, when holding constant the other variables.

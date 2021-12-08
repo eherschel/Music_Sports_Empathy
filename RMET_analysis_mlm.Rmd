@@ -135,8 +135,8 @@ Lv-1:
 $$\mathrm{empathyRMET}_{ti} = \beta_{0i} + \beta_{1i}\mathrm{time}_{ti} + \beta_{2i}\mathrm{verbalpmc}_{ti} + e_{ti}$$
 Lv-2:
 $$\beta_{0i} = \gamma_{00} + \gamma_{01}\mathrm{baseage}_i + \gamma_{02}\mathrm{verbalpm_i} + \gamma_{03}\mathrm{group}_i+ u_{0i}$$
-$$\beta_{1i} = \gamma_{10} + \gamma_{11}\mathrm{verbalpm}_i + \gamma_{12}\mathrm{group}_i +  u_{1i}$$
-$$\beta_{2i} = \gamma_{20} + \gamma_{21}\mathrm{baseage}_i + \gamma_{22}\mathrm{group}_i + u_{2i}$$
+$$\beta_{1i} = \gamma_{10} + \gamma_{11}\mathrm{group}_i +  u_{1i}$$
+$$\beta_{2i} = \gamma_{20} + u_{2i}$$
 
 # Baseline Model
 
@@ -247,7 +247,17 @@ confint(m5.1, parm = "beta_")
 summary(m5.1)
 ```
 
+rmet_percent_correct ~ time * group + verbal_pmc + verbal_pm +  
+     baseage + (time | id)
 
+# Write Down Final  Model Equations 
+
+Lv-1:
+$$\mathrm{empathyRMET}_{ti} = \beta_{0i} + \beta_{1i}\mathrm{time}_{ti} + \beta_{2i}\mathrm{verbalpmc}_{ti} + e_{ti}$$
+Lv-2:
+$$\beta_{0i} = \gamma_{00} + \gamma_{01}\mathrm{baseage}_i + \gamma_{02}\mathrm{verbalpm_i} + \gamma_{03}\mathrm{group}_i+ u_{0i}$$
+$$\beta_{1i} = \gamma_{10} + \gamma_{11}\mathrm{group}_i +  u_{1i}$$
+$$\beta_{2i} = \gamma_{20} + u_{2i}$$
 # Coefficient Table (msummary)
 
 ```{r}
