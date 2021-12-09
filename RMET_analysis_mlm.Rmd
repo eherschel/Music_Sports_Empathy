@@ -257,7 +257,7 @@ $$\mathrm{empathyRMET}_{ti} = \beta_{0i} + \beta_{1i}\mathrm{time}_{ti} + \beta_
 Lv-2:
 $$\beta_{0i} = \gamma_{00} + \gamma_{01}\mathrm{baseage}_i + \gamma_{02}\mathrm{verbalpm_i} + \gamma_{03}\mathrm{group}_i+ u_{0i}$$
 $$\beta_{1i} = \gamma_{10} + \gamma_{11}\mathrm{group}_i +  u_{1i}$$
-$$\beta_{2i} = \gamma_{20} + u_{2i}$$
+$$\beta_{2i} = \gamma_{20}$$
 # Coefficient Table (msummary)
 
 ```{r}
